@@ -12,6 +12,7 @@ frame_lock = Lock()
 original_frame = None
 debug_frame = None
 visualization_frame = None
+aligner = None
 
 board_lock = Lock()
 board_array = None
