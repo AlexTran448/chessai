@@ -24,7 +24,7 @@ from chessai.visualization import draw_board_canvas
 from chessai.utils import list_camera_ports
 from chessai.camera_manager import start_camera
 
-aligner = BoardAligner(
+global_data.aligner = BoardAligner(
     config.REFERENCE_ARUCO_IMAGE_PATH,
     debug=True,
     smooth=False,
@@ -34,7 +34,7 @@ piece_detector = PieceDetector(
     class_names_path=config.PIECE_DETECTION_CLASS_NAMES_PATH,
 )
 
-DEFAULT_ENGINE_PATH = "data/engines/godogpaw-macos-arm"
+DEFAULT_ENGINE_PATH = "data/engines/godogpaw.exe"
 engine_path = os.environ.get("ENGINE_PATH", DEFAULT_ENGINE_PATH)
 if not engine_path:
     print("ENGINE_PATH environment variable not set")
@@ -44,13 +44,13 @@ global_data.chess_engine = ChessEngine(engine_path)
 
 def run_window():
     import webview
-    webview.create_window("ChessAI - Chinese Chess Analyzer", 'http://127.0.0.1:3000', width=1200, height=800)
+    webview.create_window("ChessAI - Chinese Chess Analyzer", 'http://127.0.0.1:5678', width=1200, height=800)
     webview.start()
     os._exit(0)
 
 def chessai_process(frame):
     original_frame_viz = frame.copy()
-    _, board_image = aligner.process(frame, visualize=original_frame_viz)
+    _, board_image = global_data.aligner.process(frame, visualize=original_frame_viz)
     board_image_viz = board_image.copy()
     board_array = piece_detector.detect(board_image, visualize=board_image_viz)
     with global_data.board_lock:
