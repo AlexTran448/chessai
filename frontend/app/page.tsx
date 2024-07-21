@@ -81,6 +81,17 @@ export default function IndexPage() {
       window.location.href = "/"
     }, 500)
   }
+  function updateHomography() {
+    fetch("/api/vision/update_homography", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }).then((res) => res.json())
+    setTimeout(() => {
+      window.location.href = "/"
+    }, 500)
+  }
 
   const visualizationImage = useRef<HTMLImageElement>(null)
 
@@ -198,6 +209,15 @@ export default function IndexPage() {
           >
             Reset Camera
           </Button>
+          <Button
+            className="w-full"
+            onClick={() => {
+              updateHomography()
+            }}
+            >
+            Realign Board
+          </Button>
+
           <div>
             Visualization of current board camera. Please make sure the board is
             in the center of the camera and all ARUCO markers are visible.
