@@ -481,89 +481,57 @@ class BoardAligner:
                     # print(intersections)
                     # calculate intersection of h_min and v_min
 
-                    #
-                    a = intersections[0]
-                    b = intersections[len(horizontal) - 1]
-                    c = intersections[-len(horizontal)]
-                    d = intersections[-1]
-                    homography_src = np.array([a, b, c, d])
+                    import io
 
-                    matches = 0
-                    best_i = 0
-                    best_j = 0
-                    saved_pred = [[0, 0]]
-                    saved_h = None
-                    # i matches with number of horizontal lines
-                    # j matches with number of vertical lines
-                    for i in range(min(4, len(vertical) - 1), 9):
-                        for j in range(min(3, len(horizontal) - 1), 10):
-                            # i and j are units of squares
-                            # get homography of i and j
+                    from fastapi import APIRouter, Response
+                    from starlette.responses import StreamingResponse
 
-                            homography_dst = np.array([[0, 0], [0, j], [i, 0], [i, j]]).astype(np.float32)
-                            h, _ = cv2.findHomography(homography_dst, homography_src)
-                            # get predicted intersections which are a grid of i x j
+                    from chessai import global_data
+                    from chessai.utils import encode_image, original_frame_stream
+                    from chessai.config import DEFAULT_VISUALIZATION_FRAME
 
-                            pred = np.array([[x, y] for x in range(i + 1) for y in range(j + 1)])
-                            if pred is None:
-                                continue
-                            pred = pred.astype(np.float32)
-                            pred = cv2.perspectiveTransform(pred.reshape(-1, 1, 2), h).reshape(-1, 2)
-                            # there are missing intersections but not missing predictions
-                            # count intersections that are close to predictions within 10 pixels
-                            distance = pairwise_distances(intersections, pred)
-                            if sum(np.min(distance, axis=0) < 10) > matches:
-                                saved_h = h
-                                matches = sum(np.min(distance, axis=0) < 10)
-                                saved_pred = pred
+                    router = APIRouter(
+                        prefix="/api/vision",
+                        tags=["Vision APIs"],
+                    )
 
-                    # predict all intersections
-                    # draw predicted intersections
+                    @router.get("/original_frame", response_class=Response)
+                    async def original_frame():
+                        return StreamingResponse(original_frame_stream(),
+                                                 media_type="multipart/x-mixed-replace;boundary=frame")
 
-                    top = np.min(saved_pred[:, 1])
-                    bottom = np.max(saved_pred[:, 1])
-                    left = np.min(saved_pred[:, 0])
-                    right = np.max(saved_pred[:, 0])
+                    @router.get("/debug_frame", response_class=Response)
+                    async def debug_frame():
+                        with global_data.frame_lock:
+                            frame = None
+                            if global_data.debug_frame is None:
+                                frame = DEFAULT_VISUALIZATION_FRAME
+                            else:
+                                frame = global_data.debug_frame
+                            encoded_frame = encode_image(frame)
+                            return Response(
+                                content=encoded_frame,
+                                media_type="image/jpg",
+                            )
 
-                    # draw pred
-                    for p in saved_pred:
-                        cv2.circle(board, (int(p[0]), int(p[1])), 3, (0, 255, 0), -1)
+                    @router.get("/visualization_frame", response_class=Response)
+                    async def visualization_frame():
+                        with global_data.frame_lock:
+                            frame = None
+                            if global_data.visualization_frame is None:
+                                frame = DEFAULT_VISUALIZATION_FRAME
+                            else:
+                                frame = global_data.visualization_frame
+                            encoded_frame = encode_image(frame)
+                            return Response(
+                                content=encoded_frame,
+                                media_type="image/jpg",
+                            )
 
-                    ratio = warp_height / 9
-                    top = round(top / ratio) * 2 + 1
-                    bottom = round(bottom / ratio) * 2 + 1
-                    ratio = warp_width / 8
-                    left = round(left / ratio) * 2 + 1
-                    right = round(right / ratio) * 2 + 1
-                    print(top, bottom, left, right)
-
-                    pred = [[x, y] for x in range(left * 60, right * 60 + 1, 2 * 60) for y in
-                            range(top * 60, bottom * 60 + 1, 2 * 60)]
-                    print(pred)
-                    if pred is None or saved_h is None:
-                        continue
-                    pred = np.array(pred).astype(np.float32)
-                    #print(saved_pred)
-                    print(len(pred), len(saved_pred))
-                    if len(pred) == len(saved_pred):
-                        h2, _ = cv2.findHomography(saved_pred, pred)
-                        if self.flip:
-                            # flip image 90 degrees
-                            src = [[0, 0], [0, 640], [640, 640], [640, 0]]
-                            dst = [[0, 640], [640, 640], [640, 0], [0, 0]]
-                            src = np.array(src, dtype=np.float32)
-                            src = src.reshape(-1, 1, 2)
-                            dst = np.array(dst, dtype=np.float32)
-                            dst = dst.reshape(-1, 1, 2)
-                            flip_homo, _ = cv2.findHomography(dst, src)
-                            h1 = np.matmul(flip_homo, h1)
-
-
-                        h = np.matmul(h2, h1)
-                        return h
-        return None
-
-
-    def update_homography(self):
-        self.force_update = True
-        print("updating")
+                    @router.post("/update_homography")
+                    async def update():
+                        global_data.aligner.update_homography()
+                        return {
+                            "success": True,
+                            "message": "Homography updated."
+                        }
