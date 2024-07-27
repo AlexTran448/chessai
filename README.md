@@ -1,4 +1,49 @@
-# ChessAI - Chinese Chess Game Analyzer
+# Fork of ChessAI - Chinese Chess Game Analyzer
+
+# Added features
+Added button to start aligning the board
+Added Deep learning model for chess board detection (No need to use ARUCO markers)
+
+
+# Method
+
+- Find estimate of board using Yolov8 model
+- Use estimation to find an initial alignment of the board
+- Binarise using canny image
+- Hide pieces from the image to avoid
+- Use Hough transformation to find the lines
+- Group lines that are close together (likely to be part of the same line)
+- Finding intersections of each line
+- Loop through arbitarily chosen intersections (created by 2 vertical and 2 horizontal lines) and compare to other intersections
+- Select the best 4 intersections that leads to the largest number other intersections matching the estimated board
+- Use intersections to create new more accurate alignment
+
+# Why not use only Yolov8
+Few datasets are avaliable, making it difficult to make the model perfect.
+Data augmentation was used to give the model more robustness against rotation and other transformations.
+Despite this, there were few lighting situations where using Yolo produced poor results
+
+
+
+
+# TODO
+
+[ ] Generate more diverse dataset to allow for more board types to be used
+[ ] Automatically check when board has been moved and automatically start aligning the board
+[ ] Change model for detecting pieces to use the whole piece instead of just the piece's character (When board is placed at a low angle, the piece face does not align with the correct position, this solution will fix it)
+
+# Weaknesses
+**Problem**: Board detection model performs poorly against board that are far from camera
+- **Likely cause**: dataset contained boards that were all close to the board
+- **Solution**: Include datasets where the board is at far distances from the camera or augment data to change the board's size
+
+**Problem**: Board detection model falsely detects objects such as chessboards
+- **Likely cause**: dataset didn't contain many null examples
+- **Solution**: Incluide chessboards, and other objects that were commonly missclassified to training set
+# -------------------
+
+## Upstream README.md at start of fork
+
 
 ChessAI is a groundbreaking tool that brings together computer vision, chess algorithms, and advanced analytics to revolutionize the Chinese Chess analytics landscape. With ChessAI, you don't need expensive electronic boards to analyze your games. Simply use your regular board, set up a camera to capture the position, and let ChessAI do the rest.
 
