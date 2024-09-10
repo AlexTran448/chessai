@@ -1,6 +1,6 @@
 # Fork of ChessAI - Chinese Chess Game Analyzer
 
-# Added features
+# Features added to this fork
 Added button to start aligning the board
 Added Deep learning model for chess board detection (No need to use ARUCO markers)
 
